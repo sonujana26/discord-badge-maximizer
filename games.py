@@ -31,6 +31,7 @@ TOKEN_EXPIRY_THRESHOLD_SEC = 12 * 3600
 
 DESKTOP_CLIENT_VERSION = "1.0.9253"
 DESKTOP_BUILD_IDENTIFIER = 594031
+DESKTOP_BUILD_NUMBER = DESKTOP_BUILD_IDENTIFIER
 PLATFORM_BUILD_IDENTIFIER = 88414
 PLATFORM_OS_REVISION = "10.0.26200"
 USER_AGENT_IDENTIFIER = (
@@ -312,7 +313,7 @@ def generate_fallback_properties() -> dict:
         "browser_user_agent": USER_AGENT_IDENTIFIER,
         "browser_version": "42.7.1",
         "os_sdk_version": "26200",
-        "client_build_number": DESKTOP_BUILD_NUMBER,
+        "client_build_number": DESKTOP_BUILD_IDENTIFIER,
         "native_build_number": PLATFORM_BUILD_IDENTIFIER,
         "client_event_source": None,
         "client_app_state": "focused",
