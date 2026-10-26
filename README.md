@@ -47,7 +47,7 @@
 
 Discord tracks user game activity and broadcast hours to award tiered profile progression badges:
 
-- **Game Activity Telemetry (`games.py`):** Discord's desktop client dispatches telemetry events (`launch_game` and `running_game_heartbeat`) to `/api/v9/science`. Because Discord does not run game executables on its servers, the backend trusts authenticated client reports for `duration_tracked_ms` - allowing instant claiming of 5,000+ playtime hours and 100+ games.
+- **Game Activity Telemetry (`games.py`):** Discord's desktop client dispatches telemetry events (`launch_game` and `running_game_heartbeat`) to `/api/v9/science`. Because Discord does not run game executables on its servers, the backend trusts authenticated client reports for `duration_tracked_ms`, allowing instant claiming of 5,000+ playtime hours and 100+ games.
 - **Voice Gateway & RTC Streaming (`stream.py`):** Unlike game badges, Discord's streaming badge is strictly server-verified by Discord media workers (SFU/RTC infrastructure). Client-side telemetry alone is ignored for badge accumulation. The Stream Maximizer establishes a real headless Voice + Go Live session via WebSocket and UDP protocol to accumulate genuine server-side broadcast hours.
 
 This repository provides standalone tools to claim game badges and maintain headless 24/7 Go Live broadcasts without running resource-heavy games, GPUs, or third-party software.
