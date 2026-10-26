@@ -47,10 +47,10 @@
 
 Discord tracks user game activity and broadcast hours to award tiered profile progression badges:
 
-- **Game Activity Telemetry:** Discord's desktop client dispatches telemetry events (`launch_game` and `running_game_heartbeat`) to `/api/v9/science`. Because Discord does not run game executables on its servers, the backend trusts authenticated client reports for `duration_tracked_ms`.
-- **Stream Activity & Gateway:** The streaming badge tracks hours spent sharing your screen or broadcasting via Go Live in voice channels. Progress is calculated via client telemetry (`video_stream_started`, `video_stream_ended`) and live voice state connections (`STREAM_CREATE` Opcode 18).
+- **Game Activity Telemetry (`games.py`):** Discord's desktop client dispatches telemetry events (`launch_game` and `running_game_heartbeat`) to `/api/v9/science`. Because Discord does not run game executables on its servers, the backend trusts authenticated client reports for `duration_tracked_ms` - allowing instant claiming of 5,000+ playtime hours and 100+ games.
+- **Voice Gateway & RTC Streaming (`stream.py`):** Unlike game badges, Discord's streaming badge is strictly server-verified by Discord media workers (SFU/RTC infrastructure). Client-side telemetry alone is ignored for badge accumulation. The Stream Maximizer establishes a real headless Voice + Go Live session via WebSocket and UDP protocol to accumulate genuine server-side broadcast hours.
 
-This repository provides standalone tools to simulate authentic telemetry packets and maintain headless Go Live broadcasts without running resource-heavy games, GPUs, or software.
+This repository provides standalone tools to claim game badges and maintain headless 24/7 Go Live broadcasts without running resource-heavy games, GPUs, or third-party software.
 
 ---
 
@@ -59,13 +59,13 @@ This repository provides standalone tools to simulate authentic telemetry packet
 <details open>
 <summary><b>Features ✨ (Click to expand)</b></summary>
 
-- ☑️ **Instant Science Telemetry Forge:** Emits authentic client-side stream and game telemetry events directly to `/api/v9/science`.
-- ☑️ **Realistic Historical Session Builder:** Decomposes target hours into organic multi-hour sessions across days/weeks with randomized viewer counts and game titles.
-- ☑️ **Headless Gateway AFK Streamer:** Connects directly to Discord Gateway, joins a voice channel, and triggers Opcode 18 `STREAM_CREATE` for real 24/7 Go Live status with **0% CPU and 0% GPU usage**.
+- ☑️ **Instant Game Telemetry Engine (`games.py`):** Emits authentic client-side game telemetry events directly to `/api/v9/science` to claim Tier 10 Game Time (5,000h) and Tier 10 Game Variety (100+ titles).
+- ☑️ **Headless Gateway AFK Streamer (`stream.py`):** Connects directly to Discord Gateway, completes the Voice WebSocket + UDP handshake, and broadcasts Opcode 18 `STREAM_CREATE` with Opus silence keepalive frames for reliable 24/7 Go Live status with **0% CPU and 0% GPU usage**.
+- ☑️ **Multi-Connection Voice Architecture:** Handles main Gateway (v9), Voice WebSocket (v7), and dedicated Stream Voice WebSocket (v7) simultaneously with active heartbeats and protocol negotiation.
 - ☑️ **Automated Game Catalog Integration:** Synchronizes with Discord's detectable games list to rotate through hundreds of verified titles for the Game Variety badge.
 - ☑️ **Live Profile & Badge Inspector:** Queries Discord's user profile API to display current badge tiers and equipped collectibles directly in your console.
 - ☑️ **Shared Authentication State:** Saves your session securely to `session.json` so you only have to provide auth once across both scripts.
-- ☑️ **Zero Dependencies:** Pure Python standard library (Python 3.10+). No `pip install` required.
+- ☑️ **Zero Dependencies:** Pure Python standard library (Python 3.10+). No `pip install` required (`cryptography` optional for encrypted RTP frames).
 
 </details>
 
@@ -112,7 +112,7 @@ Before launching either tool, grab your Discord authorization token and Cloudfla
    *(If the list is empty, open any Direct Message conversation or channel to generate traffic).*
 5. Click on any outgoing request and navigate to the **Headers** tab.
 6. Scroll down to **Request Headers** and locate **`authorization`**.
-7. Copy the value of `authorization` — this is your Discord token.
+7. Copy the value of `authorization` - this is your Discord token.
 
 ---
 
@@ -168,33 +168,47 @@ python games.py
 
 ### 2. Maximize Stream Time Badge (`stream.py`)
 
+> [!NOTE]
+> **Why Streaming Badges Require Gateway Broadcasting:**
+> Game badges (`games.py`) are client-reported telemetry events and can be credited instantly. However, Discord's **Streaming Badge** is strictly server-verified by Discord media workers (SFU/RTC):
+> - Client telemetry alone (`/science`) returns HTTP 204 but is **ignored** by the streaming badge counter.
+> - The streaming badge requires an **active Voice Gateway session** with Opcode 18 `STREAM_CREATE` and continuous keepalive frames.
+> - `stream.py` handles this entire handshake headlessly in pure Python with **0% GPU and minimal CPU**.
+
+> [!IMPORTANT]
+> **2 Critical Requirements for Stream Time to Accumulate:**
+> 1. **At Least 1 Viewer / Alt Account in the Voice Channel:** Discord's official badge policy explicitly requires that you share your screen with **at least one other person** present in the voice channel or call. If you stream alone in an empty channel (0 viewers), Discord's backend ignores the session and **will NOT count hours** toward the badge! Keep an alt account sitting in the voice channel (muted/deafened is fine).
+> 2. **Personalization Privacy Setting Enabled:** You must have **"Use data to personalize my Discord experience"** turned **ON** in your main account's settings (*User Settings ⚙ → Data & Privacy*). If this setting is disabled, Discord's analytics pipeline will not record badge progress.
+
 Run the stream maximizer:
 ```bash
 python stream.py
 ```
 
-#### Option 1: Instant Telemetry Forge (Fastest Hours Injection)
+### Start Live Stream (Gateway AFK Go Live Broadcast)
 1. Select **Option 1** from the menu.
-2. Enter your target hours to claim (e.g. `5000` for the Tier 10 *Phenomenon* badge).
-3. Optional: Enter a target server ID and voice channel ID, or press enter to randomize.
-4. **Choose Injection Strategy:**
-   - **Strategy 2: Realistic Session Batches (Recommended)** &rarr; Decomposes target hours into organic 10-hour stream blocks with randomized viewer counts (2–5 viewers) and sequential timestamps.
-   - **Strategy 1: Single High-Impact Session** &rarr; Submits the entire target duration in one large broadcast session.
+2. Enter your **Server (Guild) ID** and **Voice Channel ID** (where your account has permission to join and stream).
+3. The engine automatically executes the complete 3-connection protocol:
+   - **Main Gateway (v9):** Authenticates and sends Opcode 4 (`VOICE_STATE_UPDATE`) to join the channel.
+   - **Voice Gateway (v7):** Connects to the voice server, performs UDP IP Discovery, negotiates encryption, and pumps keepalive silence packets.
+   - **Stream Gateway (v7):** Sends Opcode 18 (`STREAM_CREATE`), connects to the dedicated stream media server, announces 1080p screen sharing, and pumps encrypted Opus silence.
+4. Your account immediately displays the purple **LIVE** badge on Discord. Leave it running in the background to accumulate streaming hours effortlessly 24/7.
+5. Press **Enter** at any time to gracefully end the stream and save accumulated hours.
 
-#### Option 2: Realistic Historical Stream Generator (Organic Multi-Week History)
-1. Select **Option 2** from the menu.
-2. Enter the cumulative hours you wish to generate (e.g. `500`).
-3. The engine simulates a natural multi-week streaming history spanning the past **30 to 90 days**, featuring:
-   - Randomized stream lengths (2.0h to 5.5h per session)
-   - Organic viewer count fluctuations (2–7 viewers)
-   - Real detectable game titles (Valorant, CS2, Minecraft, League of Legends, GTA V)
-   - Natural rest gaps (20h to 36h) between broadcasts
-
-#### Option 3: Headless Gateway Go Live Streamer (24/7 Live Stream without Discord)
-1. Select **Option 3** from the menu.
-2. Enter your **Server (Guild) ID** and **Voice Channel ID**.
-3. The engine connects directly to Discord's Voice Gateway, enters the channel headlessly, and triggers Opcode 18 `STREAM_CREATE`.
-4. Your account immediately shows the purple **LIVE / Streaming** badge in the voice channel with **0% CPU and 0% GPU usage**. Leave it running in the background as long as you want!
+> [!IMPORTANT]
+> ### ☁️ 24/7 AFK Cloud Hosting (Zero Device Wear & Zero Effort)
+>
+> Normally, acquiring Discord's Streaming Badge demands hundreds of hours of manual screen sharing or gaming in voice channels. While this tool completely eliminates that burden by spoofing the entire broadcast pipeline headlessly with 0% GPU usage, **you still need to keep your PC powered on with the script running to accumulate hours**.
+>
+> **Want to stream 24/7 without keeping your PC running?**
+> If you'd rather sit back, hold your coffee, and let a remote server farm your hours non-stop without needing your personal device turned on, we offer **dedicated, secure 24/7 cloud hosting** with custom, ultra-affordable plans starting from just **$1**:
+> - **Tailored Hour Plans:** Flexible packages matched to your target badge tier (e.g., 1-week plan for 150+ hours, 1-month plan for 700+ hours, or custom milestones).
+> - **Blazing-Fast 24/7 Uptime:** Hosted on high-speed enterprise servers with guaranteed 0 downtime and zero disconnects.
+> - **Full Web Control Panel:** Complete access to start, stop, monitor, or manage your stream process anytime.
+>
+> *Note: This hosting service is entirely optional; running the script locally on your own computer is 100% free and works perfectly while your device is on. However, if you want a set-and-forget 24/7 virtual private server experience without stressing over technical setup or device power, you are always welcome in our support server!*
+>
+> 💬 **[Join our Support Server](https://discord.gg/JaBugGHQ4m)** and open a ticket to get your custom hosting setup!
 
 ---
 
@@ -204,7 +218,7 @@ python stream.py
 > **Check Your Progress Anytime:**
 > You do not need to log into Discord on another client to verify your profile badges. You can query your live Discord profile data and equipped badges at any time by selecting:
 > - **Option 2** in `games.py` (`Inspect Discord Profile & Badges`)
-> - **Option 4** in `stream.py` (`Inspect Discord Profile & Badges`)
+> - **Option 2** in `stream.py` (`Inspect Discord Profile & Badges`)
 >
 > This queries `https://discord.com/api/v9/users/{user_id}/profile` and outputs your display name, snowflake ID, and every equipped profile badge.
 
@@ -212,7 +226,7 @@ python stream.py
 
 > [!IMPORTANT]
 > **Badge Synchronization Period (24h – 48h):**
-> Discord does not grant progression badges in real-time. Once the script outputs `HTTP 204 Accepted`, the events are recorded in Discord's backend data warehouse. Profile badge tier upgrades typically reflect on your profile within **24 to 48 hours** following Discord's scheduled analytics sync.
+> Discord does not grant progression badges in real-time. Once hours are submitted or streamed, Discord's backend data warehouse calculates badge upgrades during scheduled analytics aggregation cycles (typically within **24 to 48 hours**).
 
 ---
 
@@ -220,15 +234,22 @@ python stream.py
 
 ```mermaid
 flowchart TD
-    A[Client Script] -->|1. Auth Handshake| B[Discord REST API /users/@me]
-    B -->|Analytics Token| A
-    A -->|2. Science Telemetry Payload| C[Discord Analytics /api/v9/science]
-    C -->|HTTP 204 Accepted| D[(Discord Analytics Pipeline)]
-    A -->|3. Headless Gateway Connection| E[Discord Gateway wss://gateway.discord.gg]
-    E -->|Opcode 4: Join Voice Channel| F[Voice Server]
-    E -->|Opcode 18: STREAM_CREATE| G[Live Go-Live Stream Key]
-    D -->|24-48h Ingestion Cycle| H[Updated Discord Profile Badges]
-    G -->|Real-time Voice Status| H
+    subgraph Games ["Game Badges (games.py)"]
+        A1[Client Script] -->|1. Auth Handshake| B1[Discord REST API /users/@me]
+        B1 -->|Analytics Token| A1
+        A1 -->|2. Science Telemetry Payload| C1[Discord Analytics /api/v9/science]
+        C1 -->|HTTP 204 Accepted| D1[(Discord Analytics Warehouse)]
+    end
+
+    subgraph Streaming ["Streaming Badge (stream.py)"]
+        A2[Stream Engine] -->|1. Connect op:2| B2[Main Gateway wss://gateway.discord.gg]
+        B2 -->|2. op:4 Join Voice| C2[Voice WS & UDP Hole Punch]
+        C2 -->|3. op:18 STREAM_CREATE| D2[Stream Voice WS & Media Pump]
+        D2 -->|4. Continuous Keepalive| E2[(Discord RTC / SFU Workers)]
+    end
+
+    D1 -->|24-48h Aggregation| F[Updated Discord Profile Badges]
+    E2 -->|Server-Tracked Stream Hours| F
 ```
 
 ---
@@ -240,6 +261,16 @@ flowchart TD
 
 ---
 
+## Credits & Acknowledgments
+
+### `games.py`
+- <a href="https://github.com/revere-group"><img src="https://github.com/revere-group.png?size=60" width="28" height="28" style="border-radius: 50%; vertical-align: middle;" alt="Revere Group" /></a> **[Revere Group](https://github.com/revere-group)**: The core idea and original structure.
+- <a href="https://gist.github.com/dolfies"><img src="https://github.com/dolfies.png?size=60" width="28" height="28" style="border-radius: 50%; vertical-align: middle;" alt="dolfies" /></a> **[dolfies](https://gist.github.com/dolfies)**: `L44–L157`: From [Discord's executable fingerprint](https://gist.github.com/dolfies/d442777ab8354e18c1a3827e27f85c3a) reverse engineering script.
+### `stream.py`
+- <a href="https://github.com/sonujana26"><img src="https://github.com/sonujana26.png?size=60" width="28" height="28" style="border-radius: 50%; vertical-align: middle;" alt="sonujana26" /></a> **[sonujana26](https://github.com/sonujana26)**: Advanced headless Gateway + Voice + Go Live stream engine.
+
+---
+
 <div align="center">
 
 [![Discord Support](https://img.shields.io/badge/Discord-Join%20Support%20Server-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/JaBugGHQ4m)
@@ -247,3 +278,4 @@ flowchart TD
 Released under the [MIT License](LICENSE).
 
 </div>
+
